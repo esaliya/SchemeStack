@@ -1,0 +1,38 @@
+;;----------------------------------
+;; B551 - Assignment 2 - Discussion
+;;----------------------------------
+;; Name:  Saliya Ekanayake
+;; ID:    sekanaya
+;; Email: sekanaya@cs.indiana.edu
+;;----------------------------------
+
+Note. Times were collected for computer-computer games
+
+
+------------------------------
+|     |          time        |
+| ply |-----------------------
+|     | alpha-beta | minimax |
+|------------------|----------
+|  1  |       400ms|    401ms|
+|  2  |       819ms|    957ms|
+|  3  |      2600ms|   4924ms|
+|  4  |      5725ms|  18402ms|
+|  5  |     24820ms| 303622ms|
+------------------------------
+
+
+For smaller ply values like 1 and 2 the performance is more or less the same
+for both strategies. But the performance difference is significant when ply 
+reaches higher values like 3, 4, and 5. Taking the average time ratio for 
+minimax over alpha-beta for these we get,
+
+
+Avg. time ratio for minimax/alpha-beta 
+ = ((4924/2600)+(18402/5725)+(30622/24820))/3
+ = 2
+
+Thus, it seems that we can perform the same evaluation of a given board with half
+the time required by minimax when using alpha-beta. This suggests that alpha-beta
+is likely to perform better in a time restricted enviornment, of course node 
+ordering may have adverse effects. 

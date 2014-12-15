@@ -1,0 +1,250 @@
+; Saliya Ekanayake
+; sekanaya
+; Final Take Home
+
+The intent of this take-home final is to help you understand what our
+compilers do and why.
+
+Please keep each answer brief (AT MOST MOST 75 WORDS) and to the point. 
+This will simplify our task when we grade your answers and keep us in good
+humor, which is better for us and better for you.  Excessively long
+answers will be marked down, as well as answers that contain the correct
+answer but also contain off-topic or incorrect information.
+
+You may consult with other students and post questions and _hints_ to the
+message board, but your answers should be given _in your own words_.
+You may use any other resources available to you, including the assignment
+descriptions, lecture notes, online compiler, and your compiler.
+
+Insert your answers into the text below, with each answer after the
+corresponding problem statement, and submit your completed document, in
+_plain ASCII text_, via the submission page as "takehome-final.txt", no
+later than Wednesday at 11pm.
+
+Prepare your submission with a text editor like vi or emacs, if you can. 
+If you use Microsoft Word, be aware that it sometimes inserts special
+characters into a document, e.g., for quotation marks, even when you save
+the document as plain text.  If this happens, please fix the document
+before you submit.
+
+We anticipate that this exam will take anywhere from two to eight hours
+depending on your starting level of understanding.
+
+--------
+
+1. Describe how the "uncover conflict" passes determine that a conflict
+   exists between two variables.
+   
+   In short, a conflict between two variables is determined when at the
+   point of an assignment one is the assigned variable and the other is
+   in the set of live variables. Live variables are the ones that are 
+   known to be referred at the point of assignment excluding the assigned
+   variable itself.
+
+--------
+
+2. Describe the special treatment call-live variables must receive that
+   other variables need not receive.
+   
+   The values of the call-live variables might be needed even after the
+   call returns. Therefore, these values need to be stored in the stack
+   prior to invoking the function. Also the stack pointer should be lifted
+   appropriately. If we don't push these to the stack then we will have
+   to force the locations of these variables as live for the call, which
+   will constraint the location assignment for the called procedure. 
+
+--------
+
+3. Describe how the compiler arranges to put tail-call arguments into
+   the proper register and frame locations.
+   
+   It first adheres to the calling conventions, i.e. marks a local 
+   assignment with "set!" of each argument to its proper register
+   or frame-var based on conventions. These locations are then
+   marked as live for the tail call. This marking guarantees that
+   these locations will not get conflicted with local variable
+   allocations of the callee. 
+
+--------
+
+4. Describe what a basic block is and how basic blocks are represented
+   in our compilers.
+   
+   A basic block is a block of flat (no nesting of "if" and "begin")
+   code where execution flows through a sequence of steps from top to
+   bottom. The exit at the bottom is always a jump (may be conditional)
+   to another block.
+   
+   Basic blocks are represented as top level letrec bound labeled 
+   thunks until assembly code generation in our compiler. In the 
+   generated assembly they are labeled blocks of code with jumps
+   at the end. 
+   
+--------
+
+5. Describe what closure conversion does.
+
+   In essence this pass captures meta-data necessary to make each procedure
+   closed, i.e. to make them contain no free variables. The meta-data 
+   is wrapped inside two forms, "closures" and "bind-free". The former has
+   information to create the closure bindings for the original variables
+   that bound procedures. The latter is inside each procedure and
+   has information to retrieve the values of its originally free variables.   
+
+--------
+
+6. Describe what assignment conversion does.
+   
+   The idea is to enable sharing the location an assigned variable
+   across procedure boundaries. It does so by making the the 
+   particular location explicit by boxing it inside the car of a
+   cons cell. The original variable will now hold the ptr for the 
+   pair. Any references to it will be marked as a reference to the
+   car of that pair. The original set! form is now handled with
+   the converted set-car! form.
+     
+--------
+
+7. At a high level, list the compiler changes required to add a division
+   operator to the source language, ignoring passes where all primitives
+   (or all value primitives) are treated alike.
+   
+   Assuming integer division with 1 word integers two passes have to 
+   handle division separately. Division takes implicit registers
+   (at least AX and AL). So select-instructions has to assign the
+   dividend explicitly to AX by first assigning any existing value
+   to of AX and AL to variables. The result should then be copied
+   from AL to particular target variable. The original values should
+   then be restored back to AX and AL. The next pass is generate-x84-64,
+   which has to issue the IDVIQ instruction for division. 
+
+--------
+
+8. Here is a box-and-pointer diagram of a Scheme value consisting of
+   a pair whose car is the fixnum 7 and whose cdr is a closure with one
+   free variable whose value is the fixnum 3.
+
+   pair                  closure
+   +-------+-------+     +-------+-------+
+   |   7   |   x---+---->|   x   |   3   |
+   +-------+-------+     +---+---+-------+
+                             |
+                             v
+                            code
+
+   A Scheme expression that produces this value is
+     
+     (let ([a 3]) (cons 7 (lambda () a)))
+
+   Consider the second box-and-pointer diagram below:
+
+      procedure             procedure
+      +-------+-------+     +-------+-------+-------+
+   +->|   x   |   x---+---->|   x   |   x   |   x   |
+   |  +---+---+-------+     +---+---+---+---+---+---+
+   |      |                     |       |       |
+   |      v                     v       |       |
+   |     code                  code     |       v
+   +------------------------------------+       +-------+-------+
+                                                |   3   |   ()  |
+                                                +-------+-------+
+                            
+   Write down a source-language expression that evaluates to the value
+   illustrated by the second diagram.
+
+   Assume that no challenge-assignment passes are run.
+   
+   Solution:
+   
+     (let ([p (cons 3 ())])
+       (letrec ([f (lambda (p) (if (eq? (car p) 3) p (g)))]
+                [g (lambda () (f p))])
+         (g)))
+
+--------
+
+9. Consider the following nonterminating UIL program.
+
+   (letrec ([f$2 (lambda (cp.5 x.3)
+                   (locals ()
+                     (begin
+                       (mset! (mref cp.5 14) -1
+                         (- 0 (mref (mref cp.5 14) -1)))
+                       (f$2 (mref cp.5 6)
+                            (+ x.3 (mref (mref cp.5 14) -1))))))])
+     (locals (y.4 y.1 t.7 t.8 t.9 f.2 t.6)
+       (begin
+         (set! y.4 8)
+         (set! y.1
+           (begin
+             (set! t.7 y.4)
+             (set! t.8 30)
+             (set! t.9 (+ (alloc 16) 1))
+             (mset! t.9 -1 t.7)
+             (mset! t.9 7 t.8)
+             t.9))
+         (set! f.2
+           (begin
+             (set! t.6 (+ (alloc 24) 2))
+             (mset! t.6 -2 f$2)
+             t.6))
+         (mset! f.2 6 f.2)
+         (mset! f.2 14 y.1)
+         (f$2 f.2 136))))
+
+   Write down a source-language program for which the week 15 online
+   compiler (with default settings) produces the UIL program above. 
+   (Your compiler should produce a similar UIL program with the
+   standard helpers.ss object-layout definitions.)
+   
+   Solution:
+   
+   (let ([y 1])
+     (let ([y (cons y '(void))])
+       (letrec ([f (lambda (x)
+                    (set-car! y (- 0 (car y)))
+                    (f (+ x (car y))))])
+         (f 17))))
+
+--------
+
+10. Study the expression below.
+
+    (letrec ([f (lambda (v)
+                  (letrec ([g (lambda (i)
+                                (if (= i (vector-length v))
+                                    '()
+                                    (cons 5 (g (+ i 1)))))])
+                    (g 3)))])
+      (f (make-vector 8)))
+
+    Fill in the blanks:
+
+    10a. The value of this expression is (5 5 5 5 5).
+         (Work out by hand first, then verify by running.)
+
+    10b. f is called 1 time.
+
+    10c. g is called 6 times.
+
+    10d. 2 closures are allocated.
+
+    10e. 5 pairs are allocated.
+
+    10f. 1 vector is allocated.
+
+    10g. 23 (9 for vector, 10 for 5 pairs, 1 for f's closure, and 3 for g's closure)
+         total words are allocated in the heap.
+         (Show how you came up with that answer.)
+
+    10h. The stack will get 5 frames deep by virtue of calls
+         initiated by (f (make-vector 8)).
+
+    Assume that no challenge-assignment passes are run.
+
+    Hint: It will help to trace by hand the sequence of calls and while
+    doing so draw diagrams of the stack and each allocated object.
+
+    Hint: You can verify your answers by tracing f, g, and (in the
+    language wrapper for one of the passes) alloc, so there's no excuse
+    not to get each of these answers correct.
