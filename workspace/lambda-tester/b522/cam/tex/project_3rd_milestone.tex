@@ -1,0 +1,1074 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+%\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{comment}
+\usepackage{amsmath}
+\usepackage{mdwlist}
+%\usepackage{txfonts}
+\usepackage{xspace}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{stmaryrd}
+\usepackage{proof}
+\usepackage{multicol}
+\usepackage{etex}
+\usepackage[all, cmtip]{xy}
+\usepackage{xcolor}
+\usepackage{mathpartir}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+%\newtheorem{definition}[theorem]{Definition}
+%\newtheorem{proposition}[theorem]{Proposition}
+% \newtheorem{corollary}[theorem]{Corollary}
+
+% \newenvironment{proof}[1][Proof]{\begin{trivlist}
+% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+%% \newenvironment{definition}[1][Definition]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+%% \newenvironment{example}[1][Example]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+%% \newenvironment{remark}[1][Remark]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+% \newcommand{\qed}{\nobreak \ifvmode \relax \else
+%       \ifdim\lastskip<1.5em \hskip-\lastskip
+%       \hskip1.5em plus0em minus0.5em \fi \nobreak
+%       \vrule height0.75em width0.5em depth0.25em\fi}
+
+% \newcommand{\qed}{\hfill \ensuremath{\Box}}
+
+\newcommand{\eqn}{=_n}
+\newcommand{\eqr}{=_r}
+\newcommand{\eqv}{=_v}
+\newcommand{\lcal}{$\lambda$-calculus\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\title{B522 : Project - Milestone 3 (Preservation)}
+
+\author{Eric Holk (eholk@cs.indiana.edu) \and Saliya Ekanayake (sekanaya@cs.indiana.edu) \and Hyungro Lee (lee212@indiana.edu)}
+
+\begin{document}
+\maketitle
+
+\newcommand{\cons}{\ensuremath{\mathtt{cons}}}
+\newcommand{\car}{\ensuremath{\mathtt{car}}}
+\newcommand{\cdr}{\ensuremath{\mathtt{cdr}}}
+\newcommand{\vnull}{\ensuremath{\mathtt{null}}}
+\newcommand{\nil}{\ensuremath{\mathtt{nil}}}
+\newcommand{\nils}{\ensuremath{\mathit{nil}}}
+\newcommand{\addone}{\ensuremath{\mathtt{add1}}}
+\newcommand{\gap}{\ensuremath{\quad}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Syntax for Categorical Abstract Machine (CAM)}
+
+\begin{itemize}
+
+\item Source Syntax
+
+\[
+\begin{array}{rlr}
+  t & ::= n ~| ~\lambda t ~| ~t_0 t_1 ~| ~nil ~| ~(cons ~t_1 ~t_2) ~| ~(car ~t)
+  ~| ~(cdr ~t) & \textrm{(Terms)}
+\end{array}
+\]
+
+
+\item Machine Syntax
+\[
+\begin{array}{rlr}
+v & ::= null ~| ~(v_1, ~v_2) ~| ~[v, t] & \textrm{(Values)} \\
+k & ::= kempty ~| ~kapp(t, ~k) ~| ~kapp.inner(k) ~| ~kcons(t, ~k) | ~kcons.inner(k) \\
+& \gap ~~| ~kcar(k) ~| ~kcdr(k) & \textrm{(Continuations)} \\
+\end{array}
+\]
+
+\end{itemize}
+
+\section{Operational Semantics}
+
+The semantics are defined by two mutually recursive transition
+functions, given below.
+
+\[
+\begin{array}{rll}
+  t 
+  & \Rightarrow_\mathit{eval} & 
+  \langle t, \vnull, \nils, \mathit{kempty} \rangle \\
+  \hline
+
+  \langle n, v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle k, \gamma(n, v), s \rangle \\
+
+  \langle \lambda t, v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle k, [v, t], s \rangle \\
+
+  \langle \nil, v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle k, \vnull, s \rangle \\
+
+  \langle t_0~t_1, v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle t_0, v, v :: s, \mathit{kapp}(t_1, k) \rangle \\
+
+  \langle (\cons~t_1~t_2), v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle t_1, v, v :: s, \mathit{kcons}(t_2, k) \rangle \\
+
+  \langle (\car~t), v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle t, v, s, \mathit{kcar}(k) \rangle \\
+
+  \langle (\cdr~t), v, s, k \rangle 
+  & \Rightarrow_\mathit{eval} & 
+  \langle t, v, s, \mathit{kcdr}(k) \rangle \\
+
+  \hline
+
+  \langle \mathit{kapp}(t, k), v, v' :: s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle t, v', v :: s, \mathit{kapp.inner}(k) \rangle \\
+
+  \langle \mathit{kapp.inner}(k), v', [v, t] :: s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle t, (v, v'), s, k \rangle \\
+
+  \langle \mathit{kcons}(t_1, k), v, v' :: s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle t_1, v', v :: s, \mathit{kcons.inner}(k) \rangle \\
+
+  \langle \mathit{kcons.inner}(k), v, v' :: s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle k, (v', v), s \rangle \\
+
+  \langle \mathit{kcar}(k), (v_1, v_2), s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle k, v_1, s \rangle \\
+
+  \langle \mathit{kcdr}(k), (v_1, v_2), s \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  \langle k, v_2, s \rangle \\
+
+  \hline
+
+  \langle \mathit{kempty}, v, \nils \rangle 
+  & \Rightarrow_\mathit{cont} & 
+  v \\
+
+\end{array}
+\]
+
+where
+
+\[
+\begin{array}{rlr}
+\gamma(0, (v_1, v_2)) = v_2 \\
+\gamma(n, (v_1, v_2)) = \gamma(n-1, v_1)\\
+\end{array}
+\]
+
+
+\section{Type System}
+
+\begin{itemize}
+
+\item Types
+\[
+\begin{array}{rlr}
+  \tau & ::= \tau_\vnull ~|~ \tau \times \tau ~|~ \tau \rightarrow \tau \\  
+\end{array}
+\]
+
+
+\item Typing Environments
+\[
+\begin{array}{rlr}
+  \Gamma & ::= \cdot ~|~ \Gamma, \tau \\
+\end{array}
+\]
+
+Our types consist of the \vnull~ type ($\tau_\vnull$), pair types ($\tau
+\times \tau$) and function types ($\tau \rightarrow \tau$). We
+considered using the type $\mathrm{list}~\tau$ for the result of the
+$\cons$ and $\nil$ terms, but we opted to represent lists as pairs
+instead. This gives us the flexibility to store non-uniform data types
+in a list. It also allows us to maintain progress for well-typed
+terms. For example, we migth say that $(\car~t)$ works on terms of
+type $\mathrm{list}~\tau$ and gives you a $\tau$, except that we would
+get stuck if we tried to evaluate $(\car~\nil)$, even though this term
+would be well-typed.
+
+\item Type environment lookup
+
+\[
+\begin{array}{rl}
+  (\Gamma, \tau)(0) & = \tau \\
+  (\Gamma, \tau)(n + 1) & = \Gamma(n) \\
+\end{array}
+\]
+
+\item Type judgments for terms
+
+\begin{mathpar}
+
+\inferrule*
+{
+  \Gamma(n) = \tau
+}
+{
+  \Gamma \vdash n : \tau
+}
+
+
+\inferrule*
+{
+  \Gamma, \tau_1 \vdash t : \tau_2
+}
+{
+  \Gamma \vdash \lambda t : \tau_1 \rightarrow \tau_2
+}
+
+\inferrule*
+{
+  \Gamma \vdash t_0 : \tau_1 \rightarrow \tau
+  \+
+  \Gamma \vdash t_1 : \tau_1
+}
+{
+  \Gamma \vdash t_0 ~ t_1 : \tau
+}
+
+\inferrule*{
+  \Gamma \vdash \nil : \tau_\vnull
+}
+{}
+
+\inferrule*{
+  \Gamma \vdash t_1 : \tau_1
+  \+ 
+  \Gamma \vdash t_2 : \tau_2 
+}
+{
+  \Gamma \vdash (\cons~t_1~t_2) : \tau_1 \times \tau_2  
+}
+
+\inferrule*{
+  \Gamma \vdash t : \tau_1 \times \tau_2  
+}
+{
+  \Gamma \vdash (\car~t) : \tau_1  
+}
+
+\inferrule*{
+  \Gamma \vdash t : \tau_1 \times \tau_2 
+}
+{
+  \Gamma \vdash (\cdr~t) : \tau_2  
+}
+
+\end{mathpar}
+
+\item
+Type judgments for values
+
+\begin{mathpar}
+  \inferrule*{}{\vdash \vnull : \tau_\vnull}
+
+  \infer{\vdash (v_1, v_2) : \tau_1 ~\times ~\tau_2}
+  {\vdash v_1:\tau_1 ~~~\vdash v_2:\tau_2}
+
+  \infer{\vdash [v, t]: \tau_1 \rightarrow \tau_2}
+  {\Gamma \sim v ~~~ \Gamma, \tau_1 \vdash t:\tau_2}
+\end{mathpar}
+
+In order to typecheck values, we appeal to a consistency relation
+between typing environments and values. This is because closures are
+stored as a value (tuples of values representing the environment) and
+a term, and we must typecheck the term in an typing environment that
+matches its runtime environment.
+
+\item Type/Value Environment Consistency
+
+  \begin{mathpar}
+    \inferrule*
+    {}
+    {
+      \cdot \sim \vnull
+    }
+
+    \inferrule*{
+      \Gamma \sim v_1
+      \+
+      \vdash v_2 : \tau
+    }
+    {
+      \Gamma, \tau \sim (v_1, v_2)
+    }
+        
+  \end{mathpar}
+
+  Note that this consistency relationship is mutually recursive with
+  the value typing judgment. We must be careful to make sure both are
+  well-founded. In both cases, we are recurring on smaller values, so
+  the definition is indeed well-founded.
+
+  We have implemented this relation in Coq, and Coq agrees with us
+  that the recursion will terminate.
+
+\item Type judgments for continuations
+
+  \begin{mathpar}
+
+\inferrule*{}{nil \vdash kempty : \tau \rightarrow \tau}
+
+
+
+\infer{v::s \vdash kapp (t, k) : (\tau_1 \rightarrow \tau_2) \rightarrow \tau}
+{\Gamma \sim v ~~~ \Gamma \vdash t:\tau_1 ~~~ s \vdash k : \tau_2 \rightarrow \tau}
+
+
+
+\infer{v::s \vdash kapp.inner(k): \tau_1 \rightarrow \tau}
+{\vdash v:\tau_1 \rightarrow \tau_2 ~~~ s \vdash k: \tau_2 \rightarrow \tau}
+
+
+
+\infer{v::s \vdash kcons (t, k) : \tau_1 \rightarrow \tau}
+{\Gamma \sim v ~~~ \Gamma \vdash t:\tau_2 ~~~ s \vdash k:(\tau_1 \times \tau_2) \rightarrow \tau}
+
+
+
+\infer{v::s \vdash kcons.inner (k) : \tau_2 \rightarrow \tau}
+{\vdash v:\tau_1 ~~~ s \vdash k:(\tau_1 \times \tau_2) \rightarrow \tau}
+
+
+
+\infer{s \vdash kcar (k) : (\tau_1 \times \tau_2) \rightarrow \tau}{s \vdash k: \tau_1 \rightarrow \tau}
+
+
+
+\infer{s \vdash kcdr (k) : (\tau_1 \times \tau_2) \rightarrow \tau}{s \vdash k: \tau_2 \rightarrow \tau}
+
+\end{mathpar}
+
+\item
+Type judgments for machine states
+
+\begin{mathpar}
+\infer{\vdash <t,v,s,k>: \tau}
+{\Gamma \sim v ~~~ \Gamma \vdash t:\tau_1 ~~~ s \vdash k:\tau_1 \rightarrow \tau}
+
+\infer{\vdash <k,v,s>: \tau}
+{s \vdash k:\tau_1 \rightarrow \tau ~~~ \vdash v: \tau_1}
+
+
+    
+  \end{mathpar}
+
+\end{itemize}
+
+\section{Type Safety}
+
+\subsection{Lemmas}
+
+\begin{lemma}[Inversion Lemmas]
+  \label{lem:inversion}
+  \begin{enumerate} 
+  \item If $\Gamma \vdash n : \tau$ then $\Gamma(n) = \tau$.
+  \item If $\Gamma \vdash \lambda t : \tau_1 \rightarrow \tau_2$ then 
+    $\Gamma, \tau_1 \vdash t : \tau_2$ 
+  \item If $\Gamma \vdash t_0 t_1 : \tau$ then $\Gamma \vdash t_0 : \tau_1
+    \rightarrow \tau ~and ~\Gamma \vdash t_1 : \tau_1$
+  \item If $\Gamma \vdash (cons ~t_1 ~t_2) : \tau_1 \times \tau_2$ then $\Gamma
+    \vdash t_1 : \tau_1 ~and ~\Gamma \vdash t_2 : \tau_2$
+  \item If $\Gamma \vdash (car ~t) : \tau_1$ then $\Gamma \vdash t: \tau_1
+    \times \tau_2$
+  \item If $\Gamma \vdash (cdr ~t) : \tau_2$ then $\Gamma \vdash t: \tau_1
+   \times \tau_2$
+  \item If $(v_1, v_2) :\tau_1 \times \tau_2$ then $\vdash v_1 : \tau_1 ~and
+    ~\vdash v_2 : \tau_2$.
+  \item If $\vdash [v,t] : \tau_1 \rightarrow \tau_2$ then there
+    exists $\Gamma$ such that $\Gamma \sim v$ and $\Gamma, \tau_1
+    \vdash t : \tau_2$
+  \item If $\Gamma, \tau \sim (v_1, v_2)$ then $\Gamma \sim v_1$ and $\vdash v_2
+    : \tau$
+  \item If $v::s \vdash kapp (t, k) : (\tau_1 \rightarrow \tau_2) \rightarrow
+    \tau$ then there exists $\Gamma$ such that $\Gamma \sim v$ and $\Gamma
+    \vdash t:\tau_1$ and $s \vdash k : \tau_2 \rightarrow \tau$
+  \item If $v::s \vdash kapp.inner(k): \tau_1 \rightarrow \tau$ then there
+   exists $\tau_2$ such that $\vdash v:\tau_1 \rightarrow \tau_2$ and $s \vdash
+   k: \tau_2 \rightarrow \tau$
+  \item If $v::s \vdash kcons (t, k) : \tau_1 \rightarrow \tau$ then there
+   exists $\Gamma, \tau_2$ such that $\Gamma \sim v$ and $\Gamma \vdash
+   t:\tau_2$ and $s \vdash k:(\tau_1 \times \tau_2) \rightarrow \tau$
+  \item If $v::s \vdash kcons.inner (k) : \tau_2 \rightarrow \tau$ then there exists
+   $\tau_1$ such that $\vdash v:\tau_1$ and $s \vdash k:(\tau_1 \times \tau_2)
+   \rightarrow \tau$
+  \item If  $s \vdash kcar (k) : (\tau_1 \times \tau_2) \rightarrow \tau$ then
+   $s \vdash k: \tau_1 \rightarrow \tau$
+  \item If $s \vdash kcdr (k) : (\tau_1 \times \tau_2) \rightarrow \tau$ then
+   $s \vdash k: \tau_2 \rightarrow \tau$
+  \item If $\vdash <t,v,s,k>: \tau$ then there exists $\Gamma, \tau_1$ such that
+  $\Gamma \sim v$ and $\Gamma \vdash t:\tau_1$ and $s \vdash k:\tau_1 \rightarrow
+   \tau$
+  \item If $\vdash <k,v,s>: \tau$ then there exists $\tau_1$ such that $s \vdash
+  k:\tau_1 \rightarrow \tau$ and $\vdash v: \tau_1$   
+  \end{enumerate}
+\end{lemma}
+\begin{proof}
+  These results follow directly from the definition of the typing
+  relations.
+\end{proof}
+
+
+\begin{lemma}
+  \label{lem:lookup-consistency}
+  If $\Gamma \sim v$ and $\Gamma \vdash n : \tau$ then $\vdash
+  \gamma(n, v) : \tau$.
+\end{lemma}
+\begin{proof}
+  By induction on $n$.
+
+  \paragraph{Case $n = 0$} Because $\Gamma(0) = \tau$, we know that
+  $\Gamma$ must be of the form $\Gamma', \tau$ for some $\Gamma'$ and
+  $\tau$. We also know from the consistency relation that $v$ must be
+  of the form $(v_1, v_2)$ for some $v_1, v_2$ such that $\Gamma' \sim
+  v_1$ and $\vdash v_2 : \tau$. Since $\gamma(0, (v_1, v_2)) = v_2$,
+  we have $\vdash \gamma(0, v) : \tau$.
+
+  \paragraph{Case $n = m + 1$} The induction hypothesis is that for
+  any $\Gamma', v'$, and $\tau'$ such that $\Gamma' \sim v'$, if
+  $\Gamma' \vdash m : \tau'$ then $\vdash \gamma(m, v') : \tau'$. We
+  also assume that we have $\Gamma \sim v$ and $\Gamma \vdash m + 1 :
+  \tau$. We need to show $\vdash \gamma(m + 1, v) : \tau$. We know
+  that $\Gamma(m + 1) = \tau$, and therefore for some $\Gamma'$ and
+  $\tau'$ such that $\Gamma = \Gamma', \tau'$ we have $\Gamma'(m) =
+  \tau$ and thus $\Gamma' \vdash m : \tau$. Furthermore, since $\Gamma
+  \sim v$, $v$ must have the form $(v_1, v_2)$ with $\Gamma' \sim
+  v_1$.
+
+  We needed to show $\vdash \gamma(m + 1, v) : \tau$. If we substitute
+  $(v_1, v_2)$ for $v$ and simplify, we now need to show $\vdash
+  \gamma(m, v_1) : \tau$. Since we have $\Gamma' \sim v_1$ and
+  $\Gamma' m : \tau$, we can invoke the induction hypothesis and
+  conclude $\vdash \gamma(m, v_1) : \tau$.
+
+\end{proof}
+
+\subsection{Preservation}
+
+\begin{theorem}[Preservation]
+  \begin{itemize} \hfill
+  \item If $\vdash t : \tau$ then $\langle t, null, \nil, kempty \rangle : \tau$ 
+  \item If $\vdash \langle t, v, s, k \rangle : \tau$ and $\vdash
+    \langle t, v, s, k \rangle : \tau \Rightarrow_\mathit{eval}
+    \langle t', v', s', k' \rangle$ then $\vdash \langle t', v', s',
+    k' \rangle : \tau$
+  \item If $\vdash \langle t, v, s, k \rangle : \tau$ and $\vdash \langle t, v,
+  s, k \rangle : \tau  \Rightarrow_\mathit{eval} \langle k', v', s' \rangle$
+  then $\vdash \langle k', v', s' \rangle : \tau$
+  \item If $\vdash \langle k, v, s \rangle : \tau$ and $\vdash \langle k, v,
+  s \rangle : \tau  \Rightarrow_\mathit{eval} \langle t, v', s', k' \rangle$
+  then $\vdash \langle t, v', s', k' \rangle : \tau$
+  \item If $\vdash \langle k, v, s \rangle : \tau$ and $\vdash \langle k, v,
+  s \rangle : \tau  \Rightarrow_\mathit{eval} \langle k', v', s' \rangle$
+  then $\vdash \langle k', v', s' \rangle : \tau$
+  \item If $\langle kempty, v, \nil \rangle : \tau$ and $\langle kempty, v, \nil
+  \rangle : \tau \Rightarrow_\mathit{eval} v$ then $\vdash v : \tau$ 
+    
+  \end{itemize}
+\end{theorem}
+
+\begin{proof}
+  By induction on the structure of the typing derivation for machine states.
+
+\paragraph{Case $\vdash t : \tau$} Show that
+$\vdash \langle t, null, \nil, kempty \rangle : \tau$.
+
+\[
+\inferrule*{
+  \inferrule*{
+  }{
+    \cdot \sim null
+  }
+  \+
+  \inferrule*{
+    \textrm{By IH}
+  }{
+    \cdot \vdash t : \tau
+  }
+  \+
+  \inferrule*{
+  }{
+  	\nil \vdash kempty : \tau \rightarrow \tau
+  }
+}{
+  \vdash \langle t, null, \nil, kempty \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle t_0 t_1, v, s, k \rangle : \tau$} Show that 
+$\vdash \langle t_0, v, v::s, kapp(t_1, k) \rangle: \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$, $\tau_1$ and $\tau_2$
+such that $\Gamma \sim v$, $\Gamma \vdash t_0 t_1 : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle t_0, v, v::s, kapp(t_1, k) \rangle : \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+ 		\textrm{By IH}
+	}{
+		\Gamma \sim v
+	}
+	\+
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			\Gamma \vdash t_0 : \tau_2 \rightarrow \tau_1
+		}
+	\+
+		\inferrule*{
+			\inferrule*{
+ 				\textrm{By IH}
+			}{
+				\Gamma \sim v
+			}
+			\+
+				\inferrule*{
+					\textrm{By Lemma \ref{lem:inversion}}
+				}{
+					\Gamma \vdash t_1 : \tau_2
+				}
+			\+
+				\inferrule*{
+					\textrm{By IH}
+				}{
+					s \vdash k : \tau_1 \rightarrow \tau
+				}
+		}{
+			v::s \vdash kapp( t_1, k) : (\tau_2 \rightarrow \tau_1) \rightarrow \tau
+		}
+}{
+	\vdash \langle t_0, v, v::s, kapp(t_1, k) \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle (cons ~t_1 ~t_2), v, s, k \rangle : \tau$} Show that 
+$\vdash \langle t_1, v, v::s, kcons(t_2, k) \rangle: \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$, $\tau_1$ and $\tau_2$
+such that $\Gamma \sim v$, $\Gamma \vdash (cons ~t_1 ~t_2) : \tau_1 \times \tau_2$ and $s \vdash k
+: (\tau_1 \times \tau_2) \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle  t_1, v_1, v::s, kcons(t_2, k) \rangle : \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+ 		\textrm{By IH}
+	}{
+		\Gamma \sim v
+	}
+	\+
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			\Gamma \vdash t_1 : \tau_1
+		}
+	\+
+		\inferrule*{
+			\inferrule*{
+ 				\textrm{By IH}
+			}{
+				\Gamma \sim v
+			}
+			\+
+				\inferrule*{
+ 					\textrm{By IH}
+				}{
+					\Gamma \vdash t_2 : \tau_2
+				}
+			\+
+				\inferrule*{
+ 					\textrm{By IH}
+				}{
+					s \vdash k : (\tau_1 \times \tau_2) \rightarrow \tau
+				}
+		}{
+			v::s \vdash kcons( t_2, k) : \tau_1 \rightarrow \tau
+		}
+}{
+	\vdash \langle t_1, v_1, v::s, kcons(t_2, k) \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle (car ~t), v, s, k \rangle : \tau$} Show that 
+$\vdash \langle t, v, s, kcar(k) \rangle: \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$, $\tau_1$ and $\tau_2$
+such that $\Gamma \sim v$, $\Gamma \vdash (car ~t) : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle t, v, s, kcar(k) \rangle : \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+ 		\textrm{By IH}
+	}{
+		\Gamma \sim v
+	}
+	\+
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			\Gamma \vdash t : \tau_1 \times \tau_2
+		}
+	\+
+		\inferrule*{
+				\inferrule*{
+ 					\textrm{By IH}
+				}{
+					s \vdash k : \tau_1 \rightarrow \tau
+				}
+		}{
+			s \vdash kcar(k) : (\tau_1 \times \tau_2) \rightarrow \tau
+		}
+}{
+	\vdash \langle t, v, s, kcar(k) \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle (cdr ~t), v, s, k \rangle : \tau$} Show that 
+$\vdash \langle t, v, s, kcdr(k) \rangle: \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$, $\tau_1$ and $\tau_2$
+such that $\Gamma \sim v$, $\Gamma \vdash (cdr ~t) : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle t, v, s, kcdr(k) \rangle : \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+ 		\textrm{By IH}
+	}{
+		\Gamma \sim v
+	}
+	\+
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			\Gamma \vdash t : \tau_2 \times \tau_1
+		}
+	\+
+		\inferrule*{
+				\inferrule*{
+			\textrm{By IH}
+				}{
+					s \vdash k : \tau_1 \rightarrow \tau
+				}
+		}{
+			s \vdash kcdr(k) : (\tau_2 \times \tau_1) \rightarrow \tau
+		}
+}{
+	\vdash \langle t, v, s, kcdr(k) \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle n, v, s, k \rangle : \tau$} Show that
+$\vdash \langle k, \gamma(n,v), s \rangle : \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$ and $\tau_1$
+such that $\Gamma \sim v$, $\Gamma \vdash n : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle k, \gamma(n,v), s \rangle : \tau$.
+
+\[
+\inferrule*{
+  \inferrule*{
+    \textrm{By IH}
+  }{
+    s \vdash k : \tau_1 \rightarrow \tau
+  }
+  \+
+  \inferrule*{
+    \textrm{By Lemma \ref{lem:lookup-consistency}}
+  }{
+    \vdash \gamma(n,v) : \tau_1
+  }
+}{
+  \vdash \langle k, \gamma(n,v), s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle \lambda t, v, s, k \rangle : \tau$} Show
+that $\vdash \langle k, [v,t], s \rangle: \tau$.
+
+From our inversion lemmas, we know there exists  $\Gamma$, $\tau_1$, and
+$\tau_2$ such that,
+
+\[
+\inferrule*{
+	\Gamma \sim v
+	\+
+	s \vdash k : (\tau_1 \rightarrow \tau_2) \rightarrow \tau
+	\+
+	\inferrule*{
+		\Gamma, \tau_1 \vdash t : \tau_2
+	}{
+		\Gamma \vdash \lambda t : \tau_1 \rightarrow \tau_2
+	}
+}{
+	\vdash \langle \lambda t, v, s, k \rangle : \tau
+}
+\]
+
+Now we will attempt to derive $\vdash \langle  k, [v,t], s \rangle : \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+		\textrm{By IH}
+	}{
+		s \vdash k : (\tau_1 \rightarrow \tau_2) \rightarrow \tau
+	}
+	\+
+	\inferrule*{
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			\Gamma \sim v			
+		}
+		\+
+		\inferrule* {
+			\textrm{By IH and Lemma \ref{lem:inversion}}				
+		}{
+			\Gamma,\tau_1 \vdash t : \tau_2
+		}
+	}{
+		\vdash [v,t] : \tau_1 \rightarrow \tau_2
+	}
+}{
+	\vdash \langle  k, [v,t], s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle nil, v, s, k \rangle : \tau$} Show that 
+$\vdash \langle k, null, s \rangle: \tau$.
+
+From our inversion lemmas, we know there exists $\Gamma$ and $\tau_1$
+such that $\Gamma \sim v$, $\Gamma \vdash nil : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle k, null, s \rangle : \tau$.
+
+\[
+\inferrule*{
+  \inferrule*{
+    \textrm{By IH}
+  }{
+    s \vdash k : \tau_1 \rightarrow \tau
+  }
+  \+
+  \inferrule*{
+    \textrm{By IH}
+  }{
+    \vdash null : \tau_1
+  }
+}{
+  \vdash \langle k, null, s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle kapp(t, k), v, v'::s \rangle : \tau$} Show
+that $\vdash \langle t, v', v::s, kapp.inner(k) \rangle: \tau$.
+
+From our inversion lemmas, we know there exists  $\Gamma$, $\tau_1$, and
+$\tau_2$ such that,
+
+\[
+\inferrule*{
+	\inferrule*{
+		\Gamma \sim v'
+		\+
+		\Gamma \vdash t : \tau_1
+		\+
+		s \vdash k : \tau_2 \rightarrow \tau
+	}{
+		v'::s \vdash kapp (t, k) : (\tau_1 \rightarrow \tau_2) \rightarrow
+    	\tau
+	}
+	\+
+	\vdash v : \tau_1 \rightarrow \tau_2
+}{
+	\vdash \langle kapp(t, k), v, v'::s \rangle : \tau
+}
+\]
+
+Now we
+will attempt to derive $\vdash \langle t, v', v::s, kapp.inner(k) \rangle: \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+		\textrm{By IH}
+	}{
+		\Gamma \sim v'
+	}
+	\+
+	\inferrule*{
+		\textrm{By IH}
+	}{
+		\Gamma \vdash t : \tau_1
+	}
+	\+
+	\inferrule* {
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			\vdash v : \tau_1 \rightarrow \tau_2
+		}
+		\+
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			s \vdash k : \tau_2 \rightarrow \tau
+		}
+	}{
+		v::s \vdash kapp.inner(k) : \tau_1 \rightarrow \tau
+	}
+}{
+	\vdash \langle t, v', v::s, kapp.inner(k) \rangle: \tau
+}
+\]
+
+
+\paragraph{Case $\vdash \langle kapp.inner(k), v', [v,t]::s \rangle : \tau$} Show
+that $\vdash \langle t, (v,v'), s, k \rangle: \tau$.
+
+From our inversion lemmas, we know there exists  $\Gamma$, $\tau_1$, and
+$\tau_2$ such that,
+
+\[
+\inferrule*{
+	\inferrule*{
+		\inferrule*{
+			\Gamma \sim v
+			\+
+			\Gamma, \tau_1 \vdash t : \tau_2
+		}{
+			\vdash [v,t] : \tau_1 \rightarrow \tau_2
+		}
+		\+
+		s \vdash k : \tau_2 \rightarrow \tau
+	}{
+		[v,t]::s \vdash kapp.inner(k) : \tau_1 \rightarrow \tau
+	}
+	\+
+	\vdash v' : \tau_1
+}{
+	\vdash \langle kapp.inner(k), v', [v,t]::s \rangle : \tau
+}
+\]
+
+Now we
+will attempt to derive $\vdash \langle t, (v,v'), s, k \rangle: \tau$.
+
+\[
+\inferrule*{
+	\inferrule*{
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			\Gamma \sim v
+		}
+		\+
+		\inferrule*{
+			\textrm{By IH}
+		}{
+			\vdash v' : \tau_1
+		}
+	}{
+		\Gamma' \sim (v,v')
+	}
+	\+
+	\inferrule*{
+		\textrm{By IH}
+	}{
+		\Gamma' \vdash t : \tau_2
+	}
+	\+
+	\inferrule*{
+		\textrm{By IH}
+	}{
+		s \vdash k : \tau_2 \rightarrow \tau
+	}
+}{
+	\vdash \langle t, (v,v'), s, k \rangle: \tau
+}
+\]
+
+where $\Gamma ' = \Gamma, \tau_1$
+
+
+\paragraph{Case $\vdash \langle \mathrm{kcons}(t_1, k), v_1, v'::s \rangle : \tau$}
+We need to show $\vdash \langle t_1, v', v::s,\mathrm{kcons.inner}(k)\rangle
+: \tau$.
+
+\[
+\inferrule*{
+  \inferrule*{
+    \textrm{By Lemma \ref{lem:inversion}}
+    % TODO: we should probably reference which part of the lemma we
+    % want.
+  }{
+    \Gamma \sim v'
+  }
+  \+
+  \inferrule*{
+    \textrm{By Lemma \ref{lem:inversion}}
+  }{
+    \Gamma \vdash t_1 : \tau_2
+  }
+  \+
+  \inferrule*{
+      \inferrule*{
+        \textrm{By Lemma \ref{lem:inversion}}
+      }{
+        \vdash v : \tau_1
+      }
+      \+
+      \inferrule*{
+        \textrm{By Lemma \ref{lem:inversion}}
+      }{
+        s \vdash k : (\tau_1 \times \tau_2) \rightarrow \tau
+      }
+  }{
+    v :: s \vdash \mathrm{kcons.inner}(k) : \tau_2 \rightarrow \tau
+  }
+}{
+  \vdash \langle t_1, v', v :: s, \mathrm{kcons.inner}(k) \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle \mathrm{kcons.inner}(k), v, v'::s \rangle : \tau$}
+We need to show $\vdash \langle k, (v', v), s \rangle : \tau$.
+
+By induction, we have $v' :: s \vdash \mathrm{kcons.inner} : \tau_1
+\rightarrow \tau$. We use the inversion lemmas to conclude $\vdash v'
+: \tau_2$ and $s \vdash k : (\tau_2 \times \tau_1) \rightarrow
+\tau$. We also know by induction that $\vdash v : \tau_1$. Now we will
+derive a type for $\langle k, (v', v), s \rangle$.
+
+\[
+\inferrule*{
+  s \vdash k : (\tau_2 \times \tau_1) \rightarrow \tau
+  \+
+  \inferrule*{
+    \vdash v' : \tau_2
+    \+
+    \vdash v : \tau_1
+  }{
+    \vdash (v', v) : (\tau_2 \times \tau_1)
+  }
+}{
+  \vdash \langle k, (v', v), s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle kcar(k), (v_1, v_2), s \rangle : \tau$} Show that 
+$\vdash \langle k, v_1, s \rangle: \tau$.
+
+By induction, we have $ s \vdash kcar(k) : (\tau_1 \times \tau_2) \rightarrow \tau$ and $ \vdash (v_1, v_2) : \tau_1 \times \tau_2$.
+From our inversion lemmas, we know there exists $\vdash v_1 : \tau_1$ and $s \vdash k
+: \tau_1 \rightarrow \tau$.
+Now we will attempt to derive $\vdash
+\langle k, v_1, s \rangle : \tau$.
+
+\[
+\inferrule*{
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			s \vdash k : \tau_1 \times \tau
+		}
+	\+
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			\vdash v_1 : \tau_1
+		}
+}{
+	\vdash \langle k, v_1, s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle kcdr(k), (v_1, v_2), s \rangle : \tau$} Show that 
+$\vdash \langle k, v_2, s \rangle: \tau$.
+
+By induction, we have $ s \vdash kcdr(k) : (\tau_1 \times \tau_2) \rightarrow \tau$ and $ \vdash (v_1, v_2) : \tau_1 \times \tau_2$.
+From our inversion lemmas, we know there exists  $\vdash v_2 : \tau_2$ and $s \vdash k
+: \tau_2 \rightarrow \tau$. Now we will attempt to derive $\vdash
+\langle  k, v_2, s \rangle : \tau$.
+
+\[
+\inferrule*{
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			s \vdash k : \tau_2 \times \tau
+		}
+	\+
+		\inferrule*{
+			\textrm{By IH and Lemma \ref{lem:inversion}}
+		}{
+			\vdash v_2 : \tau_2
+		}
+}{
+	\vdash \langle k, v_2, s \rangle : \tau
+}
+\]
+
+\paragraph{Case $\vdash \langle kempty, v, \nil \rangle : \tau$} Show
+that $\vdash v: \tau$.
+
+From our inversion lemmas, we can show,
+
+\[
+\inferrule*{
+	\inferrule*{		
+	}{
+		\nil \vdash kempty : \tau \rightarrow \tau
+	}
+	\+
+	\vdash v : \tau
+}{
+	\vdash \langle kempty, v, \nil \rangle : \tau
+}
+\]
+
+Now we will attempt to derive $\vdash v : \tau$.
+
+\[
+\inferrule*{
+	\textrm{By IH}
+}{
+	\vdash v : \tau
+}
+\]
+
+
+
+\end{proof}
+
+\end{document}
