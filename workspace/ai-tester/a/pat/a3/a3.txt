@@ -1,0 +1,15 @@
+ 
+ Kalani Ekanayake
+ kekanaya
+ Assignment 3
+ =================================================================
+
+1. ∀x[(Student(x)∧ CS(x)) => Smart(x)]
+
+2. ∀x[B551(x) => ((Classmeeting(x)∧ InWoodburn(x))]
+
+3. ∀x[x = Halloween => Comes(x, OnceYear)]
+
+4. ∀x, y, z[(Enemy(x,y) ∧Enemy(z,y)) => Friend(z,x)]
+ 
+5. ∀x∀y[friend(x,y) => TakesToMadScientist'sBall(y,x)]

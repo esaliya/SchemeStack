@@ -1,0 +1,139 @@
+;;----------------------------------
+;; B551 - Assignment 4
+;;----------------------------------
+;; Name:  Saliya Ekanayake
+;; ID:    sekanaya
+;; Email: sekanaya@cs.indiana.edu
+;;----------------------------------
+
+Q1.) Note. The symbol ~ is used as logical "not".
+
+	a.) Let T denote the event where test for the given disease is true.
+		Let X denote the event where the given disease is present.
+		
+		Given data:	P(T|~X) = 0.002 (i.e. false positive rate)
+					P(T|X)  = 0.999
+					P(X)    = 0.0002
+
+		Needed:	  	P(X|T)
+		
+		Solution: 	P(T|~X) = P(T and ~X) / P(~X) 
+				 Therefore,
+				 	P(T and ~X) = 0.002 x (1 - 0.0002) <-- A
+				 	
+				 	P(X|T)	= P(X and T) / P(T) = P(T|X) x P(X) / P(T) = 0.999 x 0.0002 / P(T) <-- B
+				 	
+				 	P(~X|T) = P(~X and ~T) / P(T) = 1 - P(X|T)
+				 Therefore, by A
+				 	P(T)	=  0.002 x (1 - 0.0002) / (1 - P(X|T)) <-- C
+				 	
+				 By B, C
+				 	P(X|T) 	= 0.999 x 0.0002 / (0.002 x (1 - 0.0002) / (1 - P(X|T))))
+				 Therefore,
+				 	P(X|T)	= 0.091
+		
+		Therefore, the probability that Mary has X based on the T is 9.1%.
+		
+	b.)	Let L denote the event that warning light is on.
+		Let F denote the event that engine has failed.
+		
+		Given data: P(L) 	= 0.001
+					P(L|F) 	= 0.999
+					
+		Needed:		The update factor for P(F) under L.
+		
+		Solution:	P(F|L)	= P(F and L) / P(L)
+					P(L|F)	= P(F and L) / P(F)
+				
+				Therefore,
+					P(F|L)	= P(F) x P(L|F) / P (L)
+				
+				Therefore, 
+					Update factor for P(F) under L is P(L|F) / P(L) = 0.999/0.001 = 999
+					
+
+Q2.)
+	1. Leaving an electrical component on may drain the battery.
+		
+		(1 ((part ?x car)
+			(type ?x electrical) 
+			(state ?x on)
+			(state car off))
+		   ((state battery drain))
+		   0.98)
+		
+		   
+	2. The starter won't function if the battery is dead.
+		
+		(2 ((state battery dead))
+		   ((state starter nonfunctional))
+		   1)
+		   
+		   
+	3. A car won't start unless the starter is functional and the key is turned.
+		
+		The premise is a negation over "and", which means we can simply have two
+		separate negations over conjuncts. Therefore, let's encode the following two
+		statements.
+		
+		A car won't start if starter is not functional
+		
+		(3 ((car ?x) 
+			(state starter nonfunctional))
+		   ((not (state ?x started)))
+		   1)
+		   
+		A car won't start if key is not turned
+		
+		(4 ((car ?x)
+		    (not (state key turned)))
+		   ((not (state ?x started)))
+		   1)
+		   
+		   
+	4. If a part makes a loud noise, it may be vibrating.
+	
+		(5 ((part ?x car)
+		    (make-loud-noise ?x))
+		   ((state ?x vibrating))
+		   0.6)
+		   
+		   
+	5. If a part is vibrating, a screw may be loose.
+	
+		(6 ((part ?x car)
+			(state ?x vibrating)
+			(screw-of ?y ?x))
+		   ((state ?y loose))
+		   0.8)
+		   
+Additional rules
+	
+	6. Steering vibrates when tires are not aligned
+	
+		(7 ((steering ?x car)
+		    (state ?x vibrating)
+		    (state car driving))
+		   ((not (state tires aligned)))
+		   0.8)
+		   
+	7. Stench in car possible when AC filter is dirty
+	
+		(8 ((ac-filter ?x car)
+		    (dirty ?x))
+		   ((condition air car smelly))
+		   0.7)
+		   
+
+Encoding background knowledge
+
+	1. The starter is a car part
+	
+		PartOf(starter, car)
+		
+	2. The lights are an electrical component
+	
+		Subset(lights, electrical-components) 
+		     					
+				 
+					

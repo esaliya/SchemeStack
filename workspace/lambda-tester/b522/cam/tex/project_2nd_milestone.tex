@@ -1,0 +1,858 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+%\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{comment}
+\usepackage{amsmath}
+\usepackage{mdwlist}
+\usepackage{txfonts}
+\usepackage{xspace}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\usepackage{proof}
+\usepackage{multicol}
+\usepackage{etex}
+\usepackage[all, cmtip]{xy}
+\usepackage{xcolor}
+\usepackage{mathpartir}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{proposition}[theorem]{Proposition}
+% \newtheorem{corollary}[theorem]{Corollary}
+
+% \newenvironment{proof}[1][Proof]{\begin{trivlist}
+% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+%% \newenvironment{definition}[1][Definition]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+%% \newenvironment{example}[1][Example]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+%% \newenvironment{remark}[1][Remark]{\begin{trivlist}
+%% \item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+% \newcommand{\qed}{\nobreak \ifvmode \relax \else
+%       \ifdim\lastskip<1.5em \hskip-\lastskip
+%       \hskip1.5em plus0em minus0.5em \fi \nobreak
+%       \vrule height0.75em width0.5em depth0.25em\fi}
+
+% \newcommand{\qed}{\hfill \ensuremath{\Box}}
+
+\newcommand{\eqn}{=_n}
+\newcommand{\eqr}{=_r}
+\newcommand{\eqv}{=_v}
+\newcommand{\lcal}{$\lambda$-calculus\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\title{B522 : Project - Milestone 2}
+
+\author{Eric Holk (eholk@cs.indiana.edu) \and Saliya Ekanayake (sekanaya@cs.indiana.edu) \and Hyungro Lee (lee212@indiana.edu)}
+
+\begin{document}
+\maketitle
+
+\newcommand{\cons}{\ensuremath{\mathtt{cons}}}
+\newcommand{\car}{\ensuremath{\mathtt{car}}}
+\newcommand{\cdr}{\ensuremath{\mathtt{cdr}}}
+\renewcommand{\null}{\ensuremath{\mathtt{null}}}
+\newcommand{\nil}{\ensuremath{\mathtt{nil}}}
+\newcommand{\nils}{\ensuremath{\mathit{nil}}}
+\newcommand{\addone}{\ensuremath{\mathtt{add1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Type system for Categorical Abstract Machine (CAM)}
+
+
+\begin{itemize}
+
+\item Syntax
+
+\[
+\begin{array}{rlr}
+  t & ::= n ~| ~\lambda t ~| ~t_0 t_1 ~| ~nil ~| ~(cons ~t_1 ~t_2) ~| ~(car ~t) ~| ~(cdr ~t) & \textrm{(Terms)} \\
+  v & ::= null ~| ~(v_1, ~v_2) ~| ~[v, t] & \textrm{(Values)} \\
+  \tau & ::= \tau_\null ~|~ \tau \times \tau ~|~ \tau \rightarrow \tau & \textrm{(Types)} \\
+  k & ::= CONT0 ~| ~CONT1(t, ~k) ~| ~CONT2(k) ~| ~CONT3(t, ~k) | ~CONT4(k) ~| ~CONT5(k) ~| ~CONT6(k) & \textrm{(Continuations)} \\
+  \Gamma & ::= \cdot ~|~ \Gamma, \tau & \textrm{(Typing Environments)} \\
+\end{array}
+\]
+
+Our types consist of the \null~ type ($\tau_\null$), pair types ($\tau
+\times \tau$) and function types ($\tau \rightarrow \tau$). We
+considered using the type $\mathrm{list}~\tau$ for the result of the
+$\cons$ and $\nil$ terms, but we opted to represent lists as pairs
+instead. This gives us the flexibility to store non-uniform data types
+in a list. It also allows us to maintain progress for well-typed
+terms. For example, we migth say that $(\car~t)$ works on terms of
+type $\mathrm{list}~\tau$ and gives you a $\tau$, except that we would
+get stuck if we tried to evaluate $(\car~\nil)$, even though this term
+would be well-typed.
+
+\item Type environment lookup
+
+\[
+\begin{array}{rl}
+  (\Gamma, \tau)(0) & = \tau \\
+  (\Gamma, \tau)(n + 1) & = \Gamma(n) \\
+\end{array}
+\]
+
+\item Type judgments for terms
+
+\begin{mathpar}
+
+\inferrule*
+{
+  \Gamma(n) = \tau
+}
+{
+  \Gamma \vdash n : \tau
+}
+
+
+\inferrule*
+{
+  \Gamma, \tau_1 \vdash t : \tau_2
+}
+{
+  \Gamma \vdash \lambda t : \tau_1 \rightarrow \tau_2
+}
+
+\inferrule*
+{
+  \Gamma \vdash t_0 : \tau_1 \rightarrow \tau
+  \+
+  \Gamma \vdash t_1 : \tau_1
+}
+{
+  \Gamma \vdash t_0 ~ t_1 : \tau
+}
+
+\inferrule*{
+  \Gamma \vdash \nil : \tau_\null
+}
+{}
+
+\inferrule*{
+  \Gamma \vdash t_1 : \tau_1
+  \+ 
+  \Gamma \vdash t_2 : \tau_2 
+}
+{
+  \Gamma \vdash (\cons~t_1~t_2) : \tau_1 \times \tau_2  
+}
+
+\inferrule*{
+  \Gamma \vdash t : \tau_1 \times \tau_2  
+}
+{
+  \Gamma \vdash (\car~t) : \tau_1  
+}
+
+\inferrule*{
+  \Gamma \vdash t : \tau_1 \times \tau_2 
+}
+{
+  \Gamma \vdash (\cdr~t) : \tau_2  
+}
+
+\end{mathpar}
+
+\item
+Type judgments for values
+
+\begin{mathpar}
+  \inferrule*{}{\vdash \null : \tau_\null}
+
+  \infer{\vdash (v_1, v_2) : \tau_1 ~\times ~\tau_2}
+  {\vdash v_1:\tau_1 ~~~\vdash v_2:\tau_2}
+
+  \infer{\vdash [v, t]: \tau_1 \rightarrow \tau_2}
+  {\Gamma \vdash v ~~~ \Gamma, \tau_1 \vdash t:\tau_2}
+\end{mathpar}
+
+In order to typecheck values, we appeal to a consistency relation
+between typing environments and values. This is because closures are
+stored as a value (tuples of values representing the environment) and
+a term, and we must typecheck the term in an typing environment that
+matches its runtime environment.
+
+\item Type/Value Environment Consistency
+
+  \begin{mathpar}
+    \inferrule*
+    {}
+    {
+      \cdot \vdash \null
+    }
+
+    \inferrule*{
+      \Gamma \vdash v_2
+      \+
+      \vdash v_2 : \tau
+    }
+    {
+      \Gamma, \tau \vdash (v_1, v_2)
+    }
+        
+  \end{mathpar}
+
+  Note that this consistency relationship is mutually recursive with
+  the value typing judgment. We must be careful to make sure both are
+  well-founded. In both cases, we are recurring on smaller values, so
+  the definition is indeed well-founded.
+
+  We have implemented this relation in Coq, and Coq agrees with us
+  that the recursion will terminate.
+
+\item Type judgments for continuations
+
+  \begin{mathpar}
+
+\inferrule*{}{nil \vdash CONT0 : \tau \rightarrow \tau}
+
+
+
+\infer{v::s \vdash CONT1 (t, k) : (\tau_1 \rightarrow \tau_2) \rightarrow \tau}
+{\Gamma \vdash v ~~~ \Gamma \vdash t:\tau_1 ~~~ s \vdash k : \tau_2 \rightarrow \tau}
+
+
+
+\infer{v::s \vdash CONT2(k): \tau_1 \rightarrow \tau}
+{\vdash v:\tau_1 \rightarrow \tau_2 ~~~ s \vdash k: \tau_2 \rightarrow \tau}
+
+
+
+\infer{v::s \vdash CONT3 (t, k) : \tau_1 \rightarrow \tau}
+{\Gamma \vdash v ~~~ \Gamma \vdash t:\tau_2 ~~~ s \vdash k:(\tau_1 \times \tau_2) \rightarrow \tau}
+
+
+
+\infer{v::s \vdash CONT4 (k) : \tau_2 \rightarrow \tau}
+{\vdash v:\tau_1 ~~~ s \vdash k:(\tau_1 \times \tau_2) \rightarrow \tau}
+
+
+
+\infer{s \vdash CONT5 (k) : (\tau_1 \times \tau_2) \rightarrow \tau}{s \vdash k: \tau_1 \rightarrow \tau}
+
+
+
+\infer{s \vdash CONT6 (k) : (\tau_1 \times \tau_2) \rightarrow \tau}{s \vdash k: \tau_2 \rightarrow \tau}
+
+\end{mathpar}
+
+\item
+Type judgments for machine states
+
+\begin{mathpar}
+\infer{\vdash <t,v,s,k>: \tau}
+{\Gamma \vdash v ~~~ \Gamma \vdash t:\tau_1 ~~~ s \vdash k:\tau_1 \rightarrow \tau}
+
+\infer{\vdash <k,v,s>: \tau}
+{s \vdash k:\tau_1 \rightarrow \tau ~~~ \vdash v: \tau_1}
+
+
+    
+  \end{mathpar}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{itemize}
+
+\section{Example}
+
+We will use a list encoding of numbers. That is, $0 \equiv
+\null$, $1 \equiv (\null, \null)$, etc. Thus,
+$\addone$ is defined as follows.
+
+\[
+\addone \equiv \lambda (\cons~\nil~0)
+\]
+
+\[
+(\addone (\addone 2)) \equiv 
+((\lambda (\cons~\nil~0))
+ ~((\lambda (\cons~\nil~0))~(cons~\nil~(cons~\nil~\nil))))
+\]
+
+The evaluation steps are:
+\newcommand{\estep}{\ensuremath{\Rightarrow_\mathit{eval}}}
+\newcommand{\cont}[1]{\ensuremath{\mathrm{CONT{#1}}}}
+\newcommand{\br}{\ensuremath{\quad}}
+
+\[
+\begin{array}{crl}
+  % TODO: Saliya - Give type derivations for each of these
+  % intermmediate states.
+  (1) & & ((\lambda (\cons~\nil~0))
+  ~((\lambda (\cons~\nil~0))~(\cons~\nil~\cons~\nil~\nil)))) \\
+
+  (2) & \estep & \langle
+  ((\lambda (\cons~\nil~0))
+  ~((\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)))),
+  \null,
+  \nils,
+  \cont{0}
+  \rangle \\
+  
+  (3) & \estep & \langle
+  \lambda (\cons~\nil~0),
+  \null,
+  \null :: \nils,
+  \cont{1}((\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)),
+           \cont{0})
+  \rangle \\
+
+  (4) & \estep & \langle 
+  \cont{1}((\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)),
+  \cont{0}),
+  [\null, (\cons~\nil~0)],
+  \null :: \nils
+  \rangle \\
+
+  (5) & \estep & \langle
+  (\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)),
+  \null,
+  [\null, (\cons~\nil~0)] :: \nils,
+  \cont{2}(\cont{0})
+  \rangle \\
+
+  (6) & \estep & \langle
+  \lambda (\cons~\nil~0),
+  \null,
+  \null :: [\null, (\cons~\nil~0)] :: \nils,
+  \cont{1}((\cons~\nil~(cons~\nil~\nil)), \cont{2}(\cont{0}))
+  \rangle \\
+
+  (7) & \estep & \langle
+  \cont{1}((\cons~\nil~(\cons~\nil~\nil)), \cont{2}(\cont{0})),
+  [\null, (\cons~\nil~0)],
+  \null :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (8) & \estep & \langle
+  (\cons~\nil~(\cons~\nil~\nil)),
+  \null,
+  [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils,
+  \cont{2}(\cont{2}(\cont{0}))
+  \rangle \\
+
+  (9) & \estep & \langle
+  \nil,
+  \null,
+  \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils, \\
+  & \br &
+  \cont{3}((\cons~\nil~\nil), \cont{2}(\cont{2}(\cont{0})))
+  \rangle \\
+
+  (10) & \estep & \langle
+  \cont{3}((\cons~\nil~\nil), \cont{2}(\cont{2}(\cont{0}))),
+  \null,\\
+  & \br &
+  \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  % TODO: Eric - Do type derivations for the next 10 states.
+
+  (11) & \estep & \langle
+  (\cons~\nil~\nil),
+  \null,
+  \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils,\\
+  & \br &
+  \cont{4}(\cont{2}(\cont{2}(\cont{0})))
+  \rangle \\
+
+  (12) & \estep & \langle
+  \nil,
+  \null,
+  \null :: \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils,\\
+  & \br &
+  \cont{3}(\nil, \cont{4}(\cont{2}(\cont{2}(\cont{0}))))
+  \rangle \\
+
+  (13) & \estep & \langle
+  \cont{3}(\nil, \cont{4}(\cont{2}(\cont{2}(\cont{0})))),
+  \null,\\
+  & \br &
+  \null :: \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (14) & \estep & \langle
+  \nil,
+  \null,
+  \null :: \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils,\\
+  & \br &
+  \cont{4}(\cont{4}(\cont{2}(\cont{2}(\cont{0}))))
+  \rangle \\
+
+  (15) & \estep & \langle
+  \cont{4}(\cont{4}(\cont{2}(\cont{2}(\cont{0})))),
+  \null,\\
+  & \br &
+  \null :: \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils,
+  \rangle \\
+
+  (16) & \estep & \langle
+  \cont{4}(\cont{2}(\cont{2}(\cont{0}))),
+  (\null, \null),\\
+  & \br &
+  \null :: [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (17) & \estep & \langle
+  \cont{2}(\cont{2}(\cont{0})),
+  (\null, (\null, \null)),\\
+  & \br &
+  [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (18) & \estep & \langle
+  (\cons~\nil~0),
+  (\null, (\null, (\null, \null))),
+  [\null, (\cons~\nil~0)] :: \nils,
+  \cont{2}(\cont{0})
+  \rangle \\
+
+  (19) & \estep & \langle
+  \nil,
+  (\null, (\null, (\null, \null))),
+  (\null, (\null, (\null, \null))) :: [\null, (\cons~\nil~0)] :: \nils,\\
+  & \br &
+  \cont{3}(0, \cont{2}(\cont{0}))
+  \rangle \\
+
+  (20) & \estep & \langle
+  \cont{3}(0, \cont{2}(\cont{0})),
+  \null,
+  (\null, (\null, (\null, \null))) :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  % TODO: Roe - type derivations for the next 10 steps.
+
+  (21) & \estep & \langle
+  0,
+  (\null, (\null, (\null, \null))),
+  \null :: [\null, (\cons~\nil~0)] :: \nils,
+  \cont{4}(\cont{2}(\cont{0}))
+  \rangle \\
+
+  (22) & \estep & \langle
+  \cont{4}(\cont{2}(\cont{0})),
+  (\null, (\null, \null)),
+  \null :: [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (23) & \estep & \langle
+  \cont{2}(\cont{0}),
+  (\null, (\null, (\null, \null))),
+  [\null, (\cons~\nil~0)] :: \nils
+  \rangle \\
+
+  (24) & \estep & \langle
+  (\cons~\nil~0),
+  (\null, (\null, (\null, (\null, \null)))),
+  \nils,
+  \cont{0}
+  \rangle \\
+
+  (25) & \estep & \langle
+  \nil,
+  (\null, (\null, (\null, (\null, \null)))),
+  (\null, (\null, (\null, (\null, \null)))) :: \nils,
+  \cont{3}(0, \cont{0})
+  \rangle \\
+
+  (26) & \estep & \langle
+  \cont{3}(0, \cont{0}),
+  \null,
+  (\null, (\null, (\null, (\null, \null)))) :: \nils
+  \rangle \\
+
+  (27) & \estep & \langle
+  0,
+  (\null, (\null, (\null, (\null, \null)))),
+  \null :: \nils,
+  \cont{4}(\cont{0})
+  \rangle \\
+
+  (28) & \estep & \langle
+  \cont{4}(\cont{0}),
+  (\null, (\null, (\null, \null))),
+  \null :: \nils
+  \rangle \\
+
+  (29) & \estep & \langle
+  \cont{0},
+  (\null, (\null, (\null, (\null, \null)))),
+  \nils
+  \rangle \\
+
+  (30) & \estep & (\null, (\null, (\null, (\null, \null))))
+
+\end{array}
+\]
+
+\section{Type Preservation}
+
+Now, we will make an informal argument for type preservation by
+showing that types are preserved at several steps of the evaluation of
+the previous expression. We have chosen the steps to derive such that
+we will use as many of the rules as possible. This expression does not
+use \car or \cdr anywhere in its evaluation, so these rules are not
+covered.
+
+\newcommand{\fulltype}{\ensuremath{\tau_\null \times \tau_\null \times
+    \tau_\null \times \tau_\null \times \tau_\null}}
+
+
+Let $\tau = \fulltype$.
+
+For convenience, let $\rho^n = \rho \times \ldots \times \rho$. For
+example, ${\tau_\null}^3 = \tau_\null \times \tau_\null \times
+\tau_\null$. Note that $\tau = {\tau_\null}^5 = \tau_\null \times {\tau_\null}^4$.
+    
+
+\subsection*{Step 1}
+\[
+\infer
+{
+	\vdash
+	((\lambda (\cons~\nil~0))~
+	 ((\lambda (\cons~\nil~0))~
+	  (\cons~\nil~(\cons~\nil~\nil)))))
+	: \tau_\null^5
+}
+{
+	\infer
+	{
+		\vdash 
+		(\lambda (\cons~\nil~0)) 
+		: \tau_\null^4~\rightarrow~\tau_\null^5
+	}
+	{
+	 \infer
+	 {
+	 	\tau_\null^4
+	 	\vdash
+	 	(\cons~\nil~0)
+	 	: \tau_\null^5
+	 }
+	 {
+	 	\tau_\null^4
+	 	\vdash
+	 	\nil
+	 	: \tau_\null
+	 	\quad
+	 	\tau_\null^4
+	 	\vdash
+	 	0
+	 	: \tau_\null^4	 		 	
+	 }	 
+	}
+	\quad
+	\infer
+	{
+		\vdash
+		((\lambda (\cons~\nil~0))~
+	  	 (\cons~\nil~(\cons~\nil~\nil)))
+	 	: \tau_\null^4
+	}
+	{
+		\textrm{Subtree (a)}
+		\quad
+		\textrm{Subtree (b)}
+	}
+}
+\]
+
+Subtree (a)
+\[
+\infer
+{
+	\vdash
+	(\lambda (\cons~\nil~0))
+	: \tau_\null^3\rightarrow\tau_\null^4
+}
+{
+	\infer
+	{
+		\tau_\null^3
+	 	\vdash
+	 	(\cons~\nil~0)
+	 	: \tau_\null^4
+	 }
+	 {		 
+	 	\tau_\null^3
+	 	\vdash
+	 	\nil
+	 	: \tau_\null		 				 		 	 
+	 	\quad	 	 
+	 	\tau_\null^3
+	 	\vdash
+	 	0
+	 	: \tau_\null^3	 	
+	 }	
+}
+\]
+
+Subtree (b)
+\[
+\infer
+{
+	\vdash
+	(\cons~\nil~(\cons~\nil~\nil))
+	: \tau_\null^3
+}
+{
+	\vdash
+	\nil
+	: \tau_\null	
+	\quad
+	\infer
+	{
+		\vdash
+		(cons~\nil~\nil)
+		: \tau_\null^2
+	}
+	{	
+		\vdash
+		\nil
+		:\tau_\null	
+		\quad		
+		\vdash
+		\nil
+		:\tau_\null		
+	}
+}
+\]
+
+\subsection*{Step 3}
+
+\[
+\inferrule*
+{
+  	\inferrule*	
+	{
+	 	\inferrule*	 	
+	 	{
+	 		\tau_\null^4
+	 		\vdash
+	 		\nil
+	 		: \tau_\null
+	 		\+
+	 		\tau_\null^4
+	 		\vdash
+	 		0
+	 		: \tau_\null^4	 		 	
+	 	}
+	 	{
+	 		\tau_\null^4
+	 		\vdash
+	 		(\cons~\nil~0)
+	 		: \tau_\null^5
+	 	}	 
+	}
+  	{  	    
+    	\vdash
+    	\lambda (\cons~\nil~0)
+    	: {\tau_\null}^4 \rightarrow {\tau_\null}^5      
+  	}~~~\textrm{Subtree (a)}~~~\vdash \null
+}
+{
+	\vdash
+	\langle
+  		\lambda (\cons~\nil~0), %t
+		\null,					%v
+  		\null :: \nils,			%s
+  		\cont{1}((\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)),	%k
+        	\cont{0})
+  	\rangle 		
+  	: \tau_\null^5
+}
+\]
+
+Subtree(a)
+\[
+\inferrule*
+{
+	\inferrule*
+	{
+		\textrm{Step1-Subtree (a)}
+		\+
+		\textrm{Step1-Subtree (b)}
+	}
+	{
+		\vdash
+		(\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil))
+		: {\tau_\null}^4
+	}~~~\nils \vdash \cont{0} : {\tau_\null}^5 \rightarrow {\tau_\null}^5 ~~~\vdash
+	\null
+}
+{
+	\null :: \nils
+    \vdash
+    \cont{1}((\lambda (\cons~\nil~0))~(\cons~\nil~(\cons~\nil~\nil)),
+        	\cont{0})
+    : ({\tau_\null}^4 \rightarrow {\tau_\null}^5) \rightarrow {\tau_\null}^5
+}
+\]
+
+\subsection*{Step 11}
+
+Let $s_1 = [\null, (\cons~\nil~0)] :: [\null, (\cons~\nil~0)] :: \nils$.
+
+Let $s_2 = [\null, (\cons~\nil~0)] :: \nils$.
+
+
+
+\[
+\infer
+{
+  \vdash 
+  \langle
+  (\cons~\nil~\nil),
+  \null,
+  \null :: s_1,
+  \cont{4}(\cont{2}(\cont{2}(\cont{0})))
+  \rangle
+  : \tau
+}
+{
+  \cdot \vdash \null 
+  \quad
+  \infer{
+    \cdot \vdash (\cons~\nil~\nil) : \tau_\null \times \tau_\null
+  }
+  {
+    \cdot \vdash \nil : \tau_\null
+    \quad
+    \cdot \vdash \nil : \tau_\null
+  }
+  \quad
+  \infer{
+    \null :: s_1 \vdash 
+    \cont{4}(\cont{2}(\cont{2}(\cont{0})))
+    : \tau_\null \times \tau_\null \rightarrow \tau
+  }
+  {
+    \textrm{Subtree (a)}
+  }
+}
+\]
+
+Subtree (a)
+\[
+\infer{
+  \null :: s_1 \vdash 
+  \cont{4}(\cont{2}(\cont{2}(\cont{0})))
+  : \tau_\null \times \tau_\null \rightarrow \tau
+}
+{
+  \cdot \vdash \null : \tau_\null
+  \quad
+  \infer{
+    [\null, (\cons~\nil~0)] :: s_2 \vdash \cont{2}(\cont{2}(\cont{0}))
+    : {\tau_\null}^3 \rightarrow \tau
+  }
+  {
+    \infer{
+      \vdash [\null, (\cons~\nil~0)] 
+      : {\tau_\null}^3
+      \rightarrow \tau_\null \times {\tau_\null}^3
+    }
+    {
+      \dot \vdash \null
+      \quad
+      \infer{
+        {\tau_\null}^3 \vdash 
+        (\cons~\nil~0) 
+        : \tau_\null \times {\tau_\null}^3
+      }
+      {
+        {\tau_\null}^3 \vdash 
+        \nil : \tau_\null
+        \quad
+        {\tau_\null}^3 \vdash 
+        0 : {\tau_\null}^3
+      }
+    }
+    \quad
+    \infer{
+      [\null, (\cons~\nil~0)] :: \nils \vdash
+      \cont{2}(\cont{0}) 
+      : {\tau_\null}^4 \rightarrow \tau
+    }
+    {
+      \textrm{Subtree (b)}
+    }
+  }
+}
+\]
+
+Subtree (b)
+
+\[
+\infer{
+  [\null, (\cons~\nil~0)] :: \nils \vdash
+  \cont{2}(\cont{0}) 
+  : {\tau_\null}^4 \rightarrow \tau
+}
+{
+  \infer{
+    \vdash [\null, (\cons~\nil~0)] : {\tau_\null}^4 \rightarrow \tau
+  }
+  {
+    \cdot \vdash \null
+    \quad
+    \infer{
+      {\tau_\null}^4 \vdash (\cons~\nil~0) : \tau
+    }
+    {
+      {\tau_\null}^4 \vdash \nil : \tau_\null
+      \quad
+      {\tau_\null}^4 \vdash 0 : {\tau_\null}^4
+    }
+  }
+  \quad
+  \nils \vdash \cont{0} : \tau \rightarrow \tau
+}
+\]
+
+\subsection*{Step 26}
+
+\[
+\inferrule*{
+  \inferrule*{   
+    {\tau_\null}^4 \vdash (\null, (\null, (\null, (\null, \null))))
+    \+
+    {\tau_\null}^4 \vdash
+    0 : {\tau_\null}^4
+    \+
+    \nils \vdash \cont{0} 
+    : \tau_\null \times {\tau_\null}^4 \rightarrow {\tau_\null}^5
+  }
+  {
+    (\null, (\null, (\null, (\null, \null)))) :: \nils
+    \vdash
+    \cont{3}(0, \cont{0})
+    : {\tau_\null} \rightarrow {\tau_\null}^5
+  }~~~\vdash \null : {\tau_\null}
+}
+{
+  \vdash 
+  \langle
+  \cont{3}(0, \cont{0}), % k
+  \null,                 % v
+  (\null, (\null, (\null, (\null, \null)))) :: \nils % s
+  \rangle
+  : {\tau_\null}^5
+}
+\]
+
+\end{document}
